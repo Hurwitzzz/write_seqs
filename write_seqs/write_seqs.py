@@ -301,7 +301,7 @@ def write_item(
             for i, segment in enumerate(
                 encoded.segment(
                     seq_settings.window_len, seq_settings.hop, start_i=start_i
-                )
+                ) # 'encoded' is the encoded tokens of an entire csv file; Each 'encoded.segment()' is a segment partitioned according to the window_len and hop size.
             ):
                 feature_segments = [
                     " ".join(str(x) for x in segment[f]) for f in features
