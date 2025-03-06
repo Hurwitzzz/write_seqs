@@ -30,7 +30,9 @@ class SequenceDataSettings:
     # we look for sequence_level_features in the df attrs
     sequence_level_features: t.List[str] = field(default_factory=list)
     hop: int = 8
+    hop_bars: int | None = None
     window_len: t.Optional[int] = 128
+    window_bars: t.Optional[int] = None
     min_window_len: t.Optional[int] = None
     aug_synthetic_data: bool = False
     aug_by_key: bool = False
