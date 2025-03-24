@@ -33,7 +33,10 @@ class SequenceDataSettings:
     hop_bars: int | None = None
     window_len: t.Optional[int] = 128
     window_bars: t.Optional[int] = None
+    context_windows: t.Optional[int] = None  # Number of context windows on each side
+    target_bars: t.Optional[int] = None  # Number of target bars in the middle
     min_window_len: t.Optional[int] = None
+    deterministic_start_i: bool = True  # Whether to use deterministic start_i based on hash
     aug_synthetic_data: bool = False
     aug_by_key: bool = False
     aug_by_key_n_keys: int = 12

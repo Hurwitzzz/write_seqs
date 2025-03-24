@@ -285,31 +285,88 @@ def write_item(
             encoded = repr_settings.encode_f(
                 augmented_df, repr_settings, feature_names=features
             )
-            # (Malcolm 2023-12-01) We use the int hash to set the start offset in a
-            #   deterministic way. However, it will be the same for every augmentation.
-            #   It would be nice to make a different, but deterministic, hash for
-            #   every augmentation.
-            assert seq_settings.window_len is not None
-            start_i = 0 - item.int_hash % seq_settings.window_len
+            # # (Malcolm 2023-12-01) We use the int hash to set the start offset in a
+            # #   deterministic way. However, it will be the same for every augmentation.
+            # #   It would be nice to make a different, but deterministic, hash for
+            # #   every augmentation.
+            # assert seq_settings.window_len is not None
+            # start_i = 0 - item.int_hash % seq_settings.window_len
 
+            # Determine start_i for segmentation. (Hewei 2025-03-22) Improved.
+            start_i = 0
+            if hasattr(seq_settings, "deterministic_start_i") and seq_settings.deterministic_start_i:
+                # Set a deterministic start_i based on hash if specified in settings
+                start_i = 0 - item.int_hash % seq_settings.window_len if seq_settings.window_len else 0
+
+            # Get sequence_level_features before segmentation
             sequence_level_features = get_sequence_level_features(
                 augmented_df, seq_settings
             )
 
             transpose, scaled_by = get_df_attrs(augmented_df)
 
-            for i, segment in enumerate(
-                # encoded.segment(
-                #     seq_settings.window_len, seq_settings.hop, start_i=start_i
-                # ) # 'encoded' is the encoded tokens of an entire csv file; Each 'encoded.segment()' is a segment partitioned according to the window_len and hop size.
-                encoded.segment_by_bar(
-                    seq_settings.window_bars, seq_settings.hop_bars, start_i=start_i
-                ) 
-            ):
+            # for i, segment in enumerate(
+            #     # encoded.segment(
+            #     #     seq_settings.window_len, seq_settings.hop, start_i=start_i
+            #     # ) # 'encoded' is the encoded tokens of an entire csv file; Each 'encoded.segment()' is a segment partitioned according to the window_len and hop size.
+            #     encoded.segment_by_bar(
+            #         seq_settings.window_bars, seq_settings.hop_bars, start_i=start_i
+            #     ) 
+            # ):
+            #     feature_segments = [
+            #         " ".join(str(x) for x in segment[f]) for f in features
+            #     ]
+            #     print("-\\|/"[i % 4], end="\r", flush=True)
+            #     write_symbols(
+            #         csv_chunk_writer,
+            #         item.score_id,
+            #         item.score_path,
+            #         item.csv_path,
+            #         transpose,
+            #         scaled_by,
+            #         segment["segment_onset"],  # type:ignore
+            #         segment["df_indices"],
+            #         " ".join(segment["input"]),  # type:ignore
+            #         *feature_segments,
+            #         *sequence_level_features,
+            #     )
+
+            # Handle segment_by_bar if window_bars is specified
+            if seq_settings.window_bars:
+                if not hasattr(encoded, "segment_by_bar"):
+                    raise ValueError(
+                        f"Cannot use window_bars with {type(encoded).__name__}, use oct encoding instead"
+                    )
+                
+                segments = encoded.segment_by_bar(
+                    window_bars=seq_settings.window_bars,
+                    hop_bars=seq_settings.hop_bars,
+                    start_i=start_i,
+                    context_windows=seq_settings.context_windows,
+                    target_bars=seq_settings.target_bars,
+                )
+                
+            else:
+                # Fallback to original segment method if window_bars not specified
+                segments = encoded.segment(
+                    window_len=seq_settings.window_len,
+                    hop=seq_settings.hop,
+                    start_i=start_i,
+                )
+            for i, segment in enumerate(segments):
+                # Extract feature segments
                 feature_segments = [
                     " ".join(str(x) for x in segment[f]) for f in features
                 ]
-                print("-\\|/"[i % 4], end="\r", flush=True)
+                
+                # Process target bar information
+                target_bar_info = []
+                if "target_bar_masks" in segment:
+                    target_bar_info.append(" ".join(str(x) for x in segment["target_bar_masks"])) # target_bar_masks
+                    target_bar_info.append(" ".join(str(bar_num) for bar_num, mask in zip(segment["bar_numbers_w_offset"], segment["target_bar_masks"]) if mask == 1)) # target_bar_numbers_w_offset
+                    target_bar_info.append(" ".join(str(bar_num) for bar_num, mask in zip(segment["bar_numbers_wo_offset"], segment["target_bar_masks"]) if mask == 1)) # target_bar_numbers_wo_offset
+
+                # Use the original write_symbols method
                 write_symbols(
                     csv_chunk_writer,
                     item.score_id,
@@ -317,14 +374,18 @@ def write_item(
                     item.csv_path,
                     transpose,
                     scaled_by,
-                    segment["segment_onset"],  # type:ignore
+                    segment["segment_onset"],
                     segment["df_indices"],
                     " ".join(segment["input"]),  # type:ignore
                     *feature_segments,
                     *sequence_level_features,
+                    *target_bar_info,
                 )
-    except ReprEncodeError as e:
-        LOGGER.warning(f"Error: {e}. \nencoding {item.csv_path} failed, skipping")
+    # except ReprEncodeError as e:
+    #     LOGGER.warning(f"Error: {e}. \nencoding {item.csv_path} failed, skipping")
+    except Exception as e:
+        LOGGER.error(f"Error processing {item.csv_path}: {e}")
+        raise e
 
 
 COLUMNS = [
@@ -359,12 +420,13 @@ def write_data_worker(
     verbose: bool,
     split: str,
 ):
+    columns = COLUMNS + features + get_concatenated_feature_names(seq_settings) + list(seq_settings.sequence_level_features)
+    if seq_settings.target_bars:
+        columns += ["target_bar_masks", "target_bar_numbers_w_offset", "target_bar_numbers_wo_offset"]
+
     csv_chunk_writer = CSVChunkWriter(
         format_path,
-        COLUMNS
-        + features
-        + get_concatenated_feature_names(seq_settings)
-        + list(seq_settings.sequence_level_features),
+        columns,
         shared_file_counter=shared_file_counter,
         lock=lock,
     )
@@ -418,6 +480,24 @@ def write_data(
     shared_file_counter = manager.Value("i", 0)
 
     init_dirs(output_folder)
+
+    for args in [
+        (
+            i * chunk_size,
+            len(items),
+            data_chunk,
+            shared_file_counter,
+            lock,
+            format_path,
+            features,
+            seq_settings,
+            repr_settings,
+            verbose,
+            split,
+        )
+        for i, data_chunk in enumerate(item_chunks)
+    ]:
+        write_data_worker(*args)
 
     pool = multiprocessing.Pool(processes=n_workers)
     pool.starmap(
