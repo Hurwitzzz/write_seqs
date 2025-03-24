@@ -305,32 +305,6 @@ def write_item(
 
             transpose, scaled_by = get_df_attrs(augmented_df)
 
-            # for i, segment in enumerate(
-            #     # encoded.segment(
-            #     #     seq_settings.window_len, seq_settings.hop, start_i=start_i
-            #     # ) # 'encoded' is the encoded tokens of an entire csv file; Each 'encoded.segment()' is a segment partitioned according to the window_len and hop size.
-            #     encoded.segment_by_bar(
-            #         seq_settings.window_bars, seq_settings.hop_bars, start_i=start_i
-            #     ) 
-            # ):
-            #     feature_segments = [
-            #         " ".join(str(x) for x in segment[f]) for f in features
-            #     ]
-            #     print("-\\|/"[i % 4], end="\r", flush=True)
-            #     write_symbols(
-            #         csv_chunk_writer,
-            #         item.score_id,
-            #         item.score_path,
-            #         item.csv_path,
-            #         transpose,
-            #         scaled_by,
-            #         segment["segment_onset"],  # type:ignore
-            #         segment["df_indices"],
-            #         " ".join(segment["input"]),  # type:ignore
-            #         *feature_segments,
-            #         *sequence_level_features,
-            #     )
-
             # Handle segment_by_bar if window_bars is specified
             if seq_settings.window_bars:
                 if not hasattr(encoded, "segment_by_bar"):
