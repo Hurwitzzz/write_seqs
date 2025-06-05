@@ -455,23 +455,25 @@ def write_data(
 
     init_dirs(output_folder)
 
-    for args in [
-        (
-            i * chunk_size,
-            len(items),
-            data_chunk,
-            shared_file_counter,
-            lock,
-            format_path,
-            features,
-            seq_settings,
-            repr_settings,
-            verbose,
-            split,
-        )
-        for i, data_chunk in enumerate(item_chunks)
-    ]:
-        write_data_worker(*args)
+    ############# Uncomment this to debug using single process ############
+    # for args in [
+    #     (
+    #         i * chunk_size,
+    #         len(items),
+    #         data_chunk,
+    #         shared_file_counter,
+    #         lock,
+    #         format_path,
+    #         features,
+    #         seq_settings,
+    #         repr_settings,
+    #         verbose,
+    #         split,
+    #     )
+    #     for i, data_chunk in enumerate(item_chunks)
+    # ]:
+    #     write_data_worker(*args)
+    ######################################################################
 
     pool = multiprocessing.Pool(processes=n_workers)
     pool.starmap(
