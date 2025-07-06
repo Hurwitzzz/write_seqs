@@ -475,6 +475,7 @@ def write_data(
     #     write_data_worker(*args)
     ######################################################################
 
+    ############# Comment this to debug ##################################
     pool = multiprocessing.Pool(processes=n_workers)
     pool.starmap(
         write_data_worker,
@@ -497,6 +498,7 @@ def write_data(
     )
     pool.close()
     pool.join()
+    ######################################################################
 
 
 def write_vocab(
