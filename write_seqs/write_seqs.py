@@ -305,8 +305,16 @@ def write_item(
 
             transpose, scaled_by = get_df_attrs(augmented_df)
 
+            if seq_settings.segment_by_phrase:
+                segments = encoded.segment_by_phrase(
+                    max_num_notes=seq_settings.max_num_notes,
+                    num_context_bars=seq_settings.num_context_bars,
+                    combine_adjacent_short_phrase=seq_settings.combine_adjacent_short_phrase,
+                    split_long_phrase= seq_settings.split_long_phrase,
+                )
+
             # Handle segment_by_bar if window_bars is specified
-            if seq_settings.window_bars:
+            elif seq_settings.window_bars:
                 if not hasattr(encoded, "segment_by_bar"):
                     raise ValueError(
                         f"Cannot use window_bars with {type(encoded).__name__}, use oct encoding instead"

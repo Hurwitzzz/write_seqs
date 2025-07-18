@@ -46,6 +46,12 @@ class SequenceDataSettings:
     aug_rhythms_n_augs: int = 1
     aug_rhythms_n_possibilities: int = 2
     drop_spelling: bool = False
+    # segment by phrase
+    segment_by_phrase: bool = False
+    max_num_notes: t.Optional[int] = None
+    num_context_bars: t.Optional[int] = None
+    combine_adjacent_short_phrase: t.Optional[bool] = None
+    split_long_phrase: t.Optional[bool] = None
 
     repr_type: t.Literal["oct", "midilike"] = "midilike"
 
