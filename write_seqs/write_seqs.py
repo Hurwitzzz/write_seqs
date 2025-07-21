@@ -403,7 +403,7 @@ def write_data_worker(
     split: str,
 ):
     columns = COLUMNS + features + get_concatenated_feature_names(seq_settings) + list(seq_settings.sequence_level_features)
-    if seq_settings.target_bars:
+    if seq_settings.target_bars or seq_settings.num_context_bars:
         columns += ["target_bar_masks", "target_bar_numbers_w_offset", "target_bar_numbers_wo_offset"]
 
     csv_chunk_writer = CSVChunkWriter(
