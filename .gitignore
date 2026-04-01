@@ -1,6 +1,7 @@
 venvvars
 build
 tests/temp_out/
+.DS_Store
 pyrightconfig.json
 
 # Python
